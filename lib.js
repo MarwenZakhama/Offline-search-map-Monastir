@@ -143,31 +143,39 @@
   function haystack(r) {
     return norm([r.ref, r.name, r.ctr, r.area, r.address, r.transformer, r.status, r.notes].join(' '));
   }
+  // Only digits (and spaces) typed: the person is looking for a reference number.
   const digitsOnly = (q) => (/^[\d\s]+$/.test(String(q).trim()) ? String(q).replace(/\s+/g, '') : '');
-  function matchQuery(hay, q) {
+
+  // Reference search. The person picks the length (8, 6 or 3 digits) next to the search bar; only references of that
+  // length are looked at, and they are compared from the FIRST digit, in order: 65 -> 65 312 -> 65 312 4 ...
+  const MODE_TYPE = { '8': 'd8', '6': 'd6', '3': 'd3' };
+  function refMatch(r, d, mode) {
+    return r.type === MODE_TYPE[mode] && r.ref.startsWith(d);
+  }
+  function matchRow(r, q, mode) {
     const d = digitsOnly(q);
-    if (d) return hay.includes(d);
+    if (d) return refMatch(r, d, mode);
+    const hay = r._hay || haystack(r);                       // words (client, address...) are searched in everything
     const tokens = norm(q).split(/\s+/).filter(Boolean);
     return tokens.every((t) => hay.includes(t));
   }
-  // Order: exact reference, then the 6 digits shown on the map for an 8-digit reference, then starts-with, then the rest.
+  // List order: exact reference first, then references that start with what was typed, then the rest.
   function rank(rows, q) {
     const first = digitsOnly(q) || norm(q).split(/\s+/).filter(Boolean)[0] || '';
     const score = (r) => {
       const ref = r.ref.toLowerCase();
       if (!first) return 9;
       if (ref === first) return 0;
-      if (r.type === 'd8' && ref.slice(2) === first) return 1;
-      if (ref.startsWith(first)) return 2;
-      return 3;
+      if (ref.startsWith(first)) return 1;
+      return 2;
     };
     return rows.slice().sort((a, b) => score(a) - score(b) || a.ref.localeCompare(b.ref, undefined, { numeric: true }));
   }
-  // Rows whose whole reference was typed: 65123456 (exact), or the 6 digits you see on the map for an 8-digit reference.
-  function refHits(rows, q) {
-    const c = digitsOnly(q);
-    if (!/^\d{3,8}$/.test(c)) return [];
-    return rows.filter((r) => r.ref === c || (r.type === 'd8' && r.ref.slice(2) === c));
+  // Rows whose WHOLE reference was typed (all the digits of the chosen length). Used to jump to the point.
+  function refHits(rows, q, mode) {
+    const d = digitsOnly(q);
+    if (!d || d.length !== Number(mode)) return [];
+    return rows.filter((r) => r.type === MODE_TYPE[mode] && r.ref === d);
   }
 
   /* ---------- Google Sheets links ---------- */
@@ -211,7 +219,7 @@
   }
 
   return {
-    detectType, formatRef, mapLabel, groupKey, parseNumber, parseMatrix, haystack, matchQuery, rank, refHits,
+    detectType, formatRef, mapLabel, groupKey, parseNumber, parseMatrix, haystack, matchRow, refMatch, rank, refHits, MODE_TYPE,
     sheetCsvUrls, haversine, formatDistance, mapsUrl, directionsUrl,
     decodeCsv, escapeHtml, norm,
   };

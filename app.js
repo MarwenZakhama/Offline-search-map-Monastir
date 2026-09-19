@@ -2,7 +2,7 @@
   'use strict';
 
   /* ================= settings ================= */
-  const APP_VERSION = '1.0.1';
+  const APP_VERSION = '1.1.1';
   const TILES_URL = 'monastir.pmtiles';           // vector map of the Monastir area (see README)
   const VIEW = [[35.50, 10.65], [35.80, 11.05]];  // where the map opens
   const LIMITS = [[35.25, 10.35], [36.05, 11.35]]; // the map can't be dragged beyond this
@@ -19,6 +19,8 @@
   };
   const MIXED = { color: '#ffffff', shape: 'circle' };              // several types on one spot
   const INK = '#14212b';
+  const HIT = '#22c55e';          // search matches turn green
+  const R_BASE = 3, R_HIT = 4.2, R_DIM = 2.4; // marker radius (px): normal, search match, not a match
   const TYPE_ORDER = { d8: 0, d6: 1, d3: 2, other: 3 };
 
   const $ = (s, el = document) => el.querySelector(s);
@@ -30,7 +32,7 @@
     _updateShape(layer) {
       if (!this._drawing || layer._empty()) return;
       const p = layer._point, ctx = this._ctx, o = layer.options;
-      const r = Math.max(Math.round(layer._radius), 1);
+      const r = Math.max(layer._radius, 1);
       ctx.beginPath();
       if (o.shape === 'tri') {            // pointing down
         const w = r * 1.2, top = -r * 0.62, bot = r * 1.25;
@@ -43,19 +45,20 @@
       }
       ctx.setLineDash([]);
       ctx.lineJoin = 'round';
-      ctx.globalAlpha = 1;
-      ctx.lineWidth = 6; ctx.strokeStyle = '#ffffff'; ctx.stroke();   // white halo: readable on map and satellite
-      ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();          // dark outline
+      ctx.globalAlpha = o.dim ? 0.3 : 1;                                // points that don't match the search fade back
+      ctx.lineWidth = o.dim ? 2 : 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();   // thin white halo: readable on map and satellite
+      ctx.lineWidth = o.dim ? 0.8 : 1.3; ctx.strokeStyle = INK; ctx.stroke();     // thin dark outline
       ctx.fillStyle = o.fillColor; ctx.fill();
-      if (o.count > 1) {                                               // several points on this exact spot
-        const bx = p.x + r * 1.05, by = p.y - r * 1.05;
-        ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2);
+      if (o.count > 1 && !o.dim) {                                      // several points on this exact spot
+        const bx = p.x + r + 2.5, by = p.y - r - 2.5;
+        ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2);
         ctx.fillStyle = INK; ctx.fill();
-        ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-        ctx.fillStyle = '#ffffff'; ctx.font = '700 10px system-ui, sans-serif';
+        ctx.lineWidth = 1; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.font = '700 7px system-ui, sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(o.count > 99 ? '99+' : String(o.count), bx, by + 0.5);
+        ctx.fillText(o.count > 9 ? '9+' : String(o.count), bx, by + 0.3);
       }
+      ctx.globalAlpha = 1;
     },
   });
   L.ShapeMarker = L.CircleMarker.extend({ _updatePath() { this._renderer._updateShape(this); } });
@@ -98,6 +101,7 @@
     datasets: [],   // [{id, name, source:{kind,url?}, rows, updated}]
     rows: [],
     q: '',
+    mode: '8',      // reference length being searched: '8' | '6' | '3'
     types: new Set(Object.keys(TYPES)),
     area: '',
     status: '',
@@ -143,9 +147,10 @@
   $('#appVersion').textContent = APP_VERSION;
 
   function initMap() {
-    canvasRenderer = L.canvas({ padding: 0.4, tolerance: 4 });
+    canvasRenderer = L.canvas({ padding: 0.4, tolerance: 10 }); // tiny markers, generous tap area
     map = L.map('map', {
       zoomControl: false,
+      attributionControl: false,   // clean map: no credits text on it
       minZoom: 9,
       maxZoom: 19,
       maxBounds: LIMITS,
@@ -154,7 +159,6 @@
       zoomSnap: 0.5,
     });
     map.fitBounds(VIEW);
-    map.attributionControl.setPrefix(false);
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
     markerLayer = L.layerGroup().addTo(map);
     labelLayer = L.layerGroup().addTo(map);
@@ -179,7 +183,7 @@
     if (mode === 'sat') {
       if (streetLayer) streetLayer.remove();
       if (!satLayer) {
-        satLayer = L.tileLayer(SAT_URL, { maxZoom: 19, maxNativeZoom: 18, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' });
+        satLayer = L.tileLayer(SAT_URL, { maxZoom: 19, maxNativeZoom: 18 });
       }
       if (!map.hasLayer(satLayer)) satLayer.addTo(map);
       satLayer.bringToBack();
@@ -217,7 +221,6 @@
         url: archive,
         flavor: 'light',
         lang: 'fr',
-        attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>',
       })
     );
     $('#banner').hidden = true;
@@ -226,7 +229,6 @@
     setStreet(
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       })
     );
   }
@@ -300,8 +302,8 @@
   const byTypeThenRef = (a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type] || a.ref.localeCompare(b.ref, undefined, { numeric: true });
 
   // Rows with the same coordinates form one group, drawn as one marker with a count.
-  // Groups are made from everything in scope (area/status/type filters), not only from the text search,
-  // so a search for one reference still shows the other references that share its spot.
+  // Groups are made from everything in scope (area/status/type filters). Nothing is hidden by the search:
+  // g.match tells which spots contain a match (drawn green); the others stay on the map, faded.
   function buildGroups(scoped, matchSet) {
     const byKey = new Map();
     for (const r of scoped) {
@@ -315,15 +317,19 @@
     for (const g of byKey.values()) {
       g.rows.sort(byTypeThenRef);
       for (const r of g.rows) groupOf.set(r, g);
-      if (matchSet && !g.rows.some((r) => matchSet.has(r))) continue; // nothing on this spot matches the search
+      g.match = !matchSet || g.rows.some((r) => matchSet.has(r));
       const kinds = new Set(g.rows.map((r) => r.type));
       const style = kinds.size > 1 ? MIXED : TYPES[g.rows[0].type];
+      const searching = !!matchSet;
       g.marker = new L.ShapeMarker([g.lat, g.lng], {
-        renderer: canvasRenderer, radius: 8, weight: 6, shape: style.shape, fillColor: style.color, count: g.rows.length,
+        renderer: canvasRenderer, radius: !searching ? R_BASE : g.match ? R_HIT : R_DIM, weight: 1,
+        shape: style.shape, fillColor: searching && g.match ? HIT : style.color, count: g.rows.length,
+        dim: searching && !g.match,
       });
       g.marker.on('click', () => openAt(g));
       groups.push(g);
     }
+    groups.sort((a, b) => a.match - b.match); // faded ones first, so matches are drawn on top
   }
 
   function rebuild() {
@@ -423,7 +429,7 @@
   function applyFilters({ fit = false } = {}) {
     const q = state.q.trim();
     const scoped = state.rows.filter((r) => (!state.area || r.area === state.area) && (!state.status || r.status === state.status));
-    const matched = q ? scoped.filter((r) => Lib.matchQuery(r._hay, q)) : scoped;
+    const matched = q ? scoped.filter((r) => Lib.matchRow(r, q, state.mode)) : scoped;
     const counts = { d8: 0, d6: 0, d3: 0, other: 0 };
     for (const r of matched) counts[r.type]++;
     const visibleType = (r) => state.types.has(r.type);
@@ -486,8 +492,10 @@
 
   function fitToShown() {
     if (!shown.length) return;
-    if (groups.length === 1) return map.setView([groups[0].lat, groups[0].lng], 18);
-    const b = L.latLngBounds(groups.map((g) => [g.lat, g.lng]));
+    const gs = groups.filter((g) => g.match);
+    if (!gs.length) return;
+    if (gs.length === 1) return map.setView([gs[0].lat, gs[0].lng], 18);
+    const b = L.latLngBounds(gs.map((g) => [g.lat, g.lng]));
     map.fitBounds(b, { paddingTopLeft: [24, 140], paddingBottomRight: [24, 40], maxZoom: 18 });
   }
 
@@ -514,7 +522,9 @@
     const view = map.getBounds().pad(0.05);
     const size = map.getSize(), mid = { x: size.x / 2, y: size.y / 2 };
     const vis = [];
+    const searching = !!state.q.trim();
     for (const g of groups) {
+      if (searching && !g.match) continue;   // faded points carry no label
       if (!view.contains([g.lat, g.lng])) continue;
       const p = map.latLngToContainerPoint([g.lat, g.lng]);
       vis.push({ g, p, d: Math.hypot(p.x - mid.x, p.y - mid.y) });
@@ -522,16 +532,16 @@
     }
     if (z < LABEL_ZOOM && vis.length > 30) return;
     vis.sort((a, b) => a.d - b.d);
-    const taken = vis.map(({ p }) => ({ x1: p.x - 11, y1: p.y - 11, x2: p.x + 11, y2: p.y + 11 })); // the markers themselves
+    const taken = vis.map(({ p }) => ({ x1: p.x - 6, y1: p.y - 6, x2: p.x + 6, y2: p.y + 6 })); // the markers themselves
     const hit = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
     let placed = 0;
     for (const { g, p } of vis) {
       if (placed >= 400) break;
       const lines = labelLines(g);
-      const w = Math.max(...lines.map((l) => l.text.length)) * 7.6 + 14, h = lines.length * 16 + 4;
+      const w = Math.max(...lines.map((l) => l.text.length)) * 5.6 + 7, h = lines.length * 10 + 2;
       const options = [
-        ['r', p.x + 11, p.y - h / 2], ['l', p.x - 11 - w, p.y - h / 2],
-        ['t', p.x - w / 2, p.y - 11 - h], ['b', p.x - w / 2, p.y + 11],
+        ['r', p.x + 6, p.y - h / 2], ['l', p.x - 6 - w, p.y - h / 2],
+        ['t', p.x - w / 2, p.y - 6 - h], ['b', p.x - w / 2, p.y + 6],
       ];
       for (const [pos, x, y] of options) {
         const box = { x1: x, y1: y, x2: x + w, y2: y + h };
@@ -595,7 +605,7 @@
       else if (e.target.closest('[data-back]')) { show(null); popup.update(); }
     });
     popup.openOn(map);
-    ring = L.circleMarker([g.lat, g.lng], { renderer: canvasRenderer, radius: 17, weight: 3, color: INK, fill: false, interactive: false }).addTo(map);
+    ring = L.circleMarker([g.lat, g.lng], { renderer: canvasRenderer, radius: 10, weight: 2, color: INK, fill: false, interactive: false }).addTo(map);
   }
   function goTo(g, row) { // used by the list and by search
     map.setView([g.lat, g.lng], Math.max(map.getZoom(), 17), { animate: false });
@@ -611,14 +621,14 @@
   let autoTimer = 0, autoKey = '';
   function scheduleAutoOpen() {
     clearTimeout(autoTimer);
-    const hits = Lib.refHits(shown, state.q);
+    const hits = Lib.refHits(shown, state.q, state.mode);
     const spots = new Set(hits.map(Lib.groupKey));
     if (!hits.length || spots.size !== 1) { autoKey = ''; return false; }
     const g = groupOf.get(hits[0]);
     const key = state.q.replace(/\s+/g, '') + '|' + g.key;
     if (key === autoKey) return true; // already opened for this search
-    const len = state.q.replace(/\s+/g, '').length;
-    autoTimer = setTimeout(() => { autoKey = key; goTo(g, hits.length === 1 ? hits[0] : null); }, len >= 8 ? 0 : len === 6 ? 300 : 500);
+    // the view only moves here: every digit of the chosen length is typed and it points to one single spot
+    autoTimer = setTimeout(() => { autoKey = key; goTo(g, hits.length === 1 ? hits[0] : null); }, 150);
     return true;
   }
 
@@ -631,7 +641,68 @@
   }
 
   /* ================= GPS ================= */
-  let watchId = null, meDot = null, meAcc = null, wantCenter = false, centered = false;
+  let watchId = null, meDot = null, meAcc = null, meBeam = null, wantCenter = false, centered = false;
+
+  /* ---------- which way you are facing ---------- */
+  // Compass sensor first (works when standing still); GPS heading only while moving and no compass is available.
+  let heading = null, shownHeading = null, lastCompassAt = 0, compassOn = false, headingRaf = 0;
+  const ME_HTML =
+    '<div class="me-wrap">' +
+    '<svg class="me-beam" viewBox="0 0 80 80" aria-hidden="true"><defs><radialGradient id="meBeamG" cx="40" cy="40" r="40" gradientUnits="userSpaceOnUse">' +
+    '<stop offset="0.15" stop-color="#1a73e8" stop-opacity="0.6"/><stop offset="1" stop-color="#1a73e8" stop-opacity="0"/></radialGradient></defs>' +
+    '<path d="M40 40 L20 6 A40 40 0 0 1 60 6 Z" fill="url(#meBeamG)"/>' +
+    '<path d="M40 19.5 L34.5 30 L45.5 30 Z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>' +
+    '<span class="me-pulse"></span><span class="me-core"></span></div>';
+
+  function compassHeading(alpha, beta, gamma) { // W3C formula: the direction the phone faces, 0 = north, clockwise
+    const d = Math.PI / 180;
+    const cA = Math.cos(alpha * d), sA = Math.sin(alpha * d), cB = Math.cos(beta * d), sB = Math.sin(beta * d), cG = Math.cos(gamma * d), sG = Math.sin(gamma * d);
+    const rA = -cA * sG - sA * sB * cG, rB = -sA * sG + cA * sB * cG;
+    if (Math.hypot(rA, rB) < 0.3) return (360 - alpha + 360) % 360; // phone (nearly) flat: use the way its top edge points
+    let h = Math.atan(rA / rB) * 180 / Math.PI;
+    if (rB < 0) h += 180; else if (rA < 0) h += 360;
+    return h;
+  }
+  function setHeading(h) {
+    heading = h;
+    if (!headingRaf) headingRaf = requestAnimationFrame(paintHeading);
+  }
+  function paintHeading() {
+    headingRaf = 0;
+    if (!meBeam || heading === null) return;
+    if (shownHeading === null) shownHeading = heading;
+    let diff = ((heading - shownHeading + 540) % 360) - 180;       // shortest way round, so it never spins the long way
+    shownHeading = (shownHeading + diff * 0.3 + 360) % 360;        // smoothing: the compass is jittery
+    meBeam.style.transform = `rotate(${shownHeading.toFixed(1)}deg)`;
+    meBeam.classList.add('on');
+    if (Math.abs(diff) > 0.5) headingRaf = requestAnimationFrame(paintHeading);
+  }
+  function onOrient(e) {
+    let h = null;
+    if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) h = e.webkitCompassHeading; // iPhone
+    else if ((e.absolute || e.type === 'deviceorientationabsolute') && e.alpha != null && e.beta != null && e.gamma != null) h = compassHeading(e.alpha, e.beta, e.gamma); // Android
+    if (h === null || Number.isNaN(h)) return;
+    lastCompassAt = Date.now();
+    setHeading((h + 360) % 360);
+  }
+  function startCompass() { // must run straight from the tap: iPhone asks for permission there
+    if (compassOn || !('DeviceOrientationEvent' in window)) return;
+    const listen = () => {
+      compassOn = true;
+      window.addEventListener('deviceorientationabsolute', onOrient, true);
+      window.addEventListener('deviceorientation', onOrient, true);
+    };
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then((r) => { if (r === 'granted') listen(); else toast('Compass not allowed: your direction will show only while you are moving.', 5000); })
+        .catch(() => {});
+    } else listen();
+  }
+  function stopCompass() {
+    window.removeEventListener('deviceorientationabsolute', onOrient, true);
+    window.removeEventListener('deviceorientation', onOrient, true);
+    compassOn = false; heading = shownHeading = null; lastCompassAt = 0;
+  }
 
   function setCentered(v) {
     centered = v;
@@ -647,10 +718,14 @@
   function onFix(pos) {
     const { latitude: lat, longitude: lng, accuracy } = pos.coords;
     lastFix = { lat, lng, accuracy };
+    const gh = pos.coords.heading, sp = pos.coords.speed;
+    if (typeof gh === 'number' && !Number.isNaN(gh) && sp > 1 && Date.now() - lastCompassAt > 2500) setHeading(gh); // moving, no compass
     $('#btnLocate').classList.remove('busy');
     if (!meDot) {
       meAcc = L.circle([lat, lng], { renderer: canvasRenderer, radius: accuracy, weight: 1, color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.12, interactive: false }).addTo(map);
-      meDot = L.marker([lat, lng], { icon: L.divIcon({ className: 'me-dot', html: '<span></span>', iconSize: [20, 20], iconAnchor: [10, 10] }), interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(map);
+      meDot = L.marker([lat, lng], { icon: L.divIcon({ className: 'me-dot', html: ME_HTML, iconSize: [80, 80], iconAnchor: [40, 40] }), interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(map);
+      meBeam = meDot.getElement().querySelector('.me-beam');
+      if (heading !== null) paintHeading();
     } else {
       meDot.setLatLng([lat, lng]);
       meAcc.setLatLng([lat, lng]).setRadius(accuracy);
@@ -680,7 +755,8 @@
     watchId = null;
     centered = false;
     wantCenter = false;
-    if (meDot) { meDot.remove(); meAcc.remove(); meDot = meAcc = null; }
+    if (meDot) { meDot.remove(); meAcc.remove(); meDot = meAcc = meBeam = null; }
+    stopCompass();
     setLocateUi();
   }
   function onLocateTap() {
@@ -688,6 +764,7 @@
     if (!window.isSecureContext) return toast('GPS needs the app to be opened over https.', 5000);
     if (watchId === null) {
       wantCenter = true;
+      startCompass();
       $('#btnLocate').classList.add('busy');
       watchId = navigator.geolocation.watchPosition(onFix, onGeoError, { enableHighAccuracy: true, maximumAge: 4000, timeout: 25000 });
       setLocateUi();
@@ -708,6 +785,22 @@
   function closeData() { $('#dataView').hidden = true; $('#btnData').focus(); }
 
   function wireEvents() {
+    // 8 / 6 / 3 selector: which reference length the digits you type are searched in
+    const savedMode = store.get('monastir.mode');
+    if (['8', '6', '3'].includes(savedMode)) state.mode = savedMode;
+    const paintMode = () => { for (const b of document.querySelectorAll('#modeSeg button')) b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)); };
+    paintMode();
+    $('#modeSeg').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-mode]');
+      if (!b || b.dataset.mode === state.mode) return;
+      state.mode = b.dataset.mode;
+      store.set('monastir.mode', state.mode);
+      paintMode();
+      clearTimeout(autoTimer); autoKey = '';
+      applyFilters();                                   // re-highlight only: the map does not move
+      if (state.q.trim().length >= 1) scheduleAutoOpen();
+    });
+
     // search: results update as you type; a whole reference opens its point straight away
     let t;
     $('#q').addEventListener('input', (e) => {
@@ -716,8 +809,8 @@
       clearTimeout(t);
       t = setTimeout(() => {
         applyFilters();
-        if (state.q.trim().length < 2) { clearTimeout(autoTimer); autoKey = ''; return; }
-        if (!scheduleAutoOpen()) fitToShown(); // a single exact match opens its popup instead of just zooming
+        if (!state.q.trim()) { clearTimeout(autoTimer); autoKey = ''; return; }
+        scheduleAutoOpen(); // the map stays where it is, until the typed number is one complete, unique reference
       }, 140);
     });
     $('#q').addEventListener('keydown', (e) => {
@@ -727,10 +820,13 @@
     });
     $('#qClear').addEventListener('click', () => {
       clearTimeout(autoTimer); autoKey = '';
-      $('#q').value = ''; state.q = ''; applyFilters({ fit: true }); $('#q').focus();
+      $('#q').value = ''; state.q = ''; applyFilters({ fit: false }); $('#q').focus(); // stay exactly where you are
     });
 
-    for (const chip of document.querySelectorAll('.chip')) $('.dot', chip).outerHTML = shapeHtml(chip.dataset.type);
+    for (const chip of document.querySelectorAll('.chip')) {
+      $('.dot', chip).outerHTML = shapeHtml(chip.dataset.type);
+      chip.setAttribute('aria-label', TYPES[chip.dataset.type].label); // read out by screen readers, not shown
+    }
     // type chips (plain toggles; if you switch every type off they all come back on)
     $('#chips').addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');

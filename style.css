@@ -52,12 +52,20 @@ svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
   background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 3px rgba(20, 33, 43, .18);
 }
 .search svg { color: var(--muted); }
+.search .seg { display: flex; gap: 3px; padding-right: 5px; flex: none; }
+.search .seg button {
+  width: 32px; height: 34px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--wash);
+  font-size: 16px; font-weight: 750; color: var(--muted); display: grid; place-items: center; padding: 0;
+}
+.search .seg button[data-mode="8"][aria-pressed="true"] { background: #d9480f; border-color: #d9480f; color: #fff; }
+.search .seg button[data-mode="6"][aria-pressed="true"] { background: #ffd43b; border-color: #d99a00; color: var(--ink); }
+.search .seg button[data-mode="3"][aria-pressed="true"] { background: #1c7ed6; border-color: #1c7ed6; color: #fff; }
 .search input {
   flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; font-size: 16px; /* 16px stops iOS zoom */
 }
 .search:focus-within { outline: 3px solid #1a73e8; outline-offset: 1px; }
 .search input::-webkit-search-cancel-button { display: none; }
-.search button { width: 44px; height: 44px; border: 0; background: none; display: grid; place-items: center; color: var(--muted); }
+.search > button { width: 40px; height: 44px; border: 0; background: none; display: grid; place-items: center; color: var(--muted); }
 .badge {
   position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
   background: var(--alert); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center;
@@ -69,13 +77,13 @@ svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
   --a: #5c6773;
-  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 13px; flex: none;
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; flex: none;
   border-radius: 18px; background: var(--wash); border: 1px solid var(--line); font-size: 14px; font-weight: 650; color: var(--muted);
 }
 .chip[data-type="d8"] { --a: #d9480f; }
 .chip[data-type="d6"] { --a: #d99a00; }
 .chip[data-type="d3"] { --a: #1c7ed6; }
-.chip .shp { opacity: .45; }
+.chip .shp { opacity: .45; width: 18px; height: 18px; }
 .chip b { font-weight: 600; font-variant-numeric: tabular-nums; }
 .chip[aria-pressed="true"] {
   background: var(--panel); color: var(--ink); border-color: var(--a);
@@ -146,7 +154,7 @@ svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
 .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 4px 18px rgba(20, 33, 43, .32); }
 .leaflet-popup-content { margin: 14px 16px 14px; min-width: 210px; font-size: 15px; line-height: 1.35; }
 .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; width: 30px; height: 30px; font-size: 24px; line-height: 28px; }
-.leaflet-control-attribution { font-size: 11px; }
+.leaflet-control-attribution { display: none !important; }   /* clean map: no credits text */
 .pop .ref { font-size: 23px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: .01em; padding-right: 24px; }
 .pop .tag { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; color: var(--muted); margin-top: 2px; }
 .pop .back { border: 0; background: none; padding: 2px 0 8px; color: var(--brand); font-weight: 650; font-size: 14px; }
@@ -167,26 +175,29 @@ svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
   background: var(--wash); color: var(--ink);
 }
 .pop .acts a.go { background: var(--ink); color: #fff; }
-.me-dot { position: relative; }
-.me-dot span { display: block; width: 20px; height: 20px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 2px 6px rgba(0, 0, 0, .3); }
-.me-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: #1a73e8; opacity: .35; animation: pulse 2s ease-out infinite; }
+.me-dot { pointer-events: none; }
+.me-wrap { position: relative; width: 80px; height: 80px; }
+.me-beam { position: absolute; left: 0; top: 0; width: 80px; height: 80px; transform-origin: 40px 40px; opacity: 0; transition: opacity .25s; overflow: visible; }
+.me-beam.on { opacity: 1; }
+.me-core, .me-pulse { position: absolute; left: 30px; top: 30px; width: 20px; height: 20px; border-radius: 50%; background: #1a73e8; }
+.me-core { border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 2px 6px rgba(0, 0, 0, .3); }
+.me-pulse { opacity: .35; animation: pulse 2s ease-out infinite; }
 @keyframes pulse { from { transform: scale(1); opacity: .4; } to { transform: scale(2.6); opacity: 0; } }
 
 /* ---------- reference labels on the map ---------- */
 .lbl { pointer-events: none; }
 .lb {
-  position: absolute; white-space: nowrap; padding: 1px 5px; border-radius: 6px;
-  font: 700 12px/16px ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums;
-  color: var(--ink); background: rgba(255, 255, 255, .95); border: 1px solid rgba(20, 33, 43, .4); box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+  position: absolute; white-space: nowrap; padding: 0 2px; border-radius: 3px;
+  font: 700 9px/10px ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  color: var(--ink); background: rgba(255, 255, 255, .72); border: 0;
 }
 .lb b { display: block; font-weight: 700; }
 .lb .t-d6 { color: #c92a2a; }               /* 6-digit references are red */
-.lb .t-more { color: var(--muted); font-weight: 600; font-size: 11px; }
-.lb-d6 { border-color: #c92a2a; }
-.p-r { left: 11px; top: 0; transform: translateY(-50%); }
-.p-l { right: 11px; top: 0; transform: translateY(-50%); }
-.p-t { left: 0; bottom: 11px; transform: translateX(-50%); }
-.p-b { left: 0; top: 11px; transform: translateX(-50%); }
+.lb .t-more { color: var(--muted); font-weight: 600; font-size: 8px; }
+.p-r { left: 6px; top: 0; transform: translateY(-50%); }
+.p-l { right: 6px; top: 0; transform: translateY(-50%); }
+.p-t { left: 0; bottom: 6px; transform: translateX(-50%); }
+.p-b { left: 0; top: 6px; transform: translateX(-50%); }
 
 /* ---------- data modal ---------- */
 .modal { position: fixed; inset: 0; z-index: 2000; background: rgba(20, 33, 43, .55); }

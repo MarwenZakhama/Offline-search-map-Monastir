@@ -3,12 +3,15 @@
 A phone app (installable web app) that shows your Google Sheet / CSV points on an offline map.
 Works with no internet once the map and your data have been saved on the phone.
 
-- Each reference type has its own marker: **8 digits** orange circle, **6 digits** yellow upside-down triangle, **3 digits** blue diamond.
-- References are shown as `65 123 456` (8 digits) and `123 456` (6 digits). On the map, labels appear from zoom 16 and leave out the first 2 digits of an 8-digit reference (`123 456`); 6-digit labels are red so they can't be mistaken for those.
-- Search by reference, client, address, area… Type a whole reference (`65 123 456`, or just the 6 digits you see on the map) and its point opens by itself. Filter by type, area and status.
-- Points on exactly the same coordinates share one marker with a count badge. Tap it to see every point there.
-- Layers button: switch between the offline map and satellite imagery (satellite needs internet).
-- Tap a point for its details, directions and a Google Maps link. GPS button: shows your position, tap again to stop following.
+- Each reference type has its own small marker: **8 digits** orange circle, **6 digits** yellow upside-down triangle, **3 digits** blue diamond. The buttons under the search bar show only that icon and the number of points.
+- References are shown as `65 123 456` (8 digits) and `123 456` (6 digits). On the map, small labels appear from zoom 16 and leave out the first 2 digits of an 8-digit reference (`123 456`); 6-digit labels are red.
+- **Search never hides anything.** Matching points turn green (and get their label); every other point stays on the map, faded.
+- **Reference search: pick 8, 6 or 3 in the search bar** (orange / yellow / blue, like the markers). Only references of that length are searched, from the first digit in order: with **8** selected, `65` → references starting with 65, then `65 312` → starting with 65312, and so on. Your choice is remembered.
+- **The map never moves while you type.** It only jumps to a point (and opens it) once all the digits of the chosen length are typed and they belong to one single spot. Clearing the search with ✕ keeps you exactly where you are.
+- Text search (client, address, area…) works too, with the same green highlight.
+- Points on exactly the same coordinates share one marker with a small count badge. Tap it to see every point there.
+- Layers button: switch between the offline map and satellite imagery (satellite needs internet). The map shows no credits text.
+- Tap a point for its details, directions and a Google Maps link. GPS button: shows your position with a beam and arrow for the direction you are facing (phone compass; while walking it falls back to GPS heading). On iPhone the app asks for compass permission the first time. Tap again to stop following.
 
 ## Set it up (about 15 minutes, once)
 
@@ -19,7 +22,7 @@ build date at https://maps.protomaps.com/builds/ and run:
     pmtiles extract https://build.protomaps.com/YYYYMMDD.pmtiles monastir.pmtiles --bbox=10.45,35.35,11.15,35.95 --maxzoom=15
 
 Put `monastir.pmtiles` next to `index.html`. (Use `--maxzoom=14` for a smaller file.)
-Map data: © OpenStreetMap contributors, via Protomaps.
+Map data: © OpenStreetMap contributors, via Protomaps (credits are not drawn on the map, but the data licence still applies).
 
 ### 2. Put the folder online
 GPS only works on https. Upload this whole folder to any static host: GitHub Pages, Netlify (drag & drop) or Cloudflare Pages.

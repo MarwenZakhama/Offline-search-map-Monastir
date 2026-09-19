@@ -28,10 +28,15 @@
         </button>
         <label class="search">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
-          <input id="q" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search reference, client, address" aria-label="Search">
+          <input id="q" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search" aria-label="Search">
           <button id="qClear" type="button" aria-label="Clear search" hidden>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></svg>
           </button>
+          <div id="modeSeg" class="seg" role="group" aria-label="Reference length">
+            <button type="button" data-mode="8" aria-pressed="true" aria-label="8 digit references">8</button>
+            <button type="button" data-mode="6" aria-pressed="false" aria-label="6 digit references">6</button>
+            <button type="button" data-mode="3" aria-pressed="false" aria-label="3 digit references">3</button>
+          </div>
         </label>
         <button id="btnFilter" class="iconbtn" type="button" aria-label="Filters" aria-expanded="false" aria-controls="filters">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v2l-7 7v6l-4-2v-4L3 7V5Z"/></svg>
@@ -40,10 +45,10 @@
       </div>
 
       <div id="chips" class="chips" role="group" aria-label="Reference type">
-        <button type="button" class="chip" data-type="d8" aria-pressed="true"><i class="dot"></i>8 digits <b>0</b></button>
-        <button type="button" class="chip" data-type="d6" aria-pressed="true"><i class="dot"></i>6 digits <b>0</b></button>
-        <button type="button" class="chip" data-type="d3" aria-pressed="true"><i class="dot"></i>3 digits <b>0</b></button>
-        <button type="button" class="chip" data-type="other" aria-pressed="true" hidden><i class="dot"></i>Other <b>0</b></button>
+        <button type="button" class="chip" data-type="d8" aria-pressed="true"><i class="dot"></i><b>0</b></button>
+        <button type="button" class="chip" data-type="d6" aria-pressed="true"><i class="dot"></i><b>0</b></button>
+        <button type="button" class="chip" data-type="d3" aria-pressed="true"><i class="dot"></i><b>0</b></button>
+        <button type="button" class="chip" data-type="other" aria-pressed="true" hidden><i class="dot"></i><b>0</b></button>
       </div>
 
       <section id="filters" class="panel" hidden>
