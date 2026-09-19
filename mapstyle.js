@@ -57,6 +57,10 @@ window.MapStyle = (() => {
   const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   const TEXT_FONT = '600 10px system-ui, "Segoe UI", Roboto, sans-serif';
   const NAME_ZOOM = 17;   // names are written from this zoom; below it only the icon
+  // Every icon and every name of the background map (places, streets, neighbourhoods, house numbers...)
+  // is drawn at this opacity, so it stays readable but never competes with your own points.
+  // 1 = as before, 0.25 = very faint. Change this single number to make the map more or less visible.
+  const MAP_FADE = 0.42;
 
   const pick = (props, lang) => {
     const n = props['name:' + lang] || props.name || '';
@@ -150,6 +154,44 @@ window.MapStyle = (() => {
     };
   }
 
+  /* ---------- fade every map icon and name (ours and the built-in ones) ----------
+     Each label draws itself on the canvas and most of them set their own opacity back to 1,
+     so the drawing context is wrapped: anything the label sets is multiplied by MAP_FADE. */
+  const ctxCache = new WeakMap();
+  const fadedCtx = (ctx) => {
+    let p = ctxCache.get(ctx);
+    if (!p) {
+      p = new Proxy(ctx, {
+        get: (t, k) => { const v = t[k]; return typeof v === 'function' ? v.bind(t) : v; },
+        set: (t, k, v) => { t[k] = k === 'globalAlpha' ? v * MAP_FADE : v; return true; },
+      });
+      ctxCache.set(ctx, p);
+    }
+    return p;
+  };
+
+  function fadeLabelRules(rules) {
+    for (const rule of rules) {
+      const sym = rule.symbolizer;
+      if (!sym || typeof sym.place !== 'function' || sym._faded) continue;
+      const place = sym.place.bind(sym);
+      sym.place = (layout, geom, feature) => {
+        const out = place(layout, geom, feature);
+        if (!out) return out;
+        for (const label of out) {
+          const draw = label.draw;
+          label.draw = (ctx, extra) => {
+            ctx.globalAlpha = MAP_FADE;          // for labels that never set an opacity themselves
+            draw(fadedCtx(ctx), extra);
+            ctx.globalAlpha = 1;
+          };
+        }
+        return out;
+      };
+      sym._faded = true;
+    }
+  }
+
   /* ---------- polygon fills for land use the built-in style leaves out ---------- */
   const fill = (kinds, color, extra) => ({
     dataLayer: 'landuse',
@@ -200,6 +242,9 @@ window.MapStyle = (() => {
         symbolizer: textSymbolizer({ font: '600 9px system-ui, sans-serif', color: '#7a6f66', text: (p) => p.addr_housenumber || '' }),
         filter: (z, f) => f.geomType === 1 && !!f.props.addr_housenumber },
     );
+
+    // last: fade them all (street names and town names of the built-in style included)
+    fadeLabelRules(label);
   }
 
   return { extend };

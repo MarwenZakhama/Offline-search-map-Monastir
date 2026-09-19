@@ -2,7 +2,7 @@
   'use strict';
 
   /* ================= settings ================= */
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
   const TILES_URL = 'monastir.pmtiles';           // vector map of the Monastir area (see README)
   const VIEW = [[35.50, 10.65], [35.80, 11.05]];  // where the map opens
   const LIMITS = [[35.25, 10.35], [36.05, 11.35]]; // the map can't be dragged beyond this
@@ -524,19 +524,20 @@
     const vis = [];
     const searching = !!state.q.trim();
     for (const g of groups) {
-      if (searching && !g.match) continue;   // faded points carry no label
       if (!view.contains([g.lat, g.lng])) continue;
       const p = map.latLngToContainerPoint([g.lat, g.lng]);
-      vis.push({ g, p, d: Math.hypot(p.x - mid.x, p.y - mid.y) });
+      // while searching, points that don't match keep their reference: it is only faded, like the point
+      const faded = searching && !g.match;
+      vis.push({ g, p, faded, d: Math.hypot(p.x - mid.x, p.y - mid.y) });
       if (vis.length > 2500) break;
     }
     if (z < LABEL_ZOOM && vis.length > 30) return;
-    vis.sort((a, b) => a.d - b.d);
+    vis.sort((a, b) => (a.faded - b.faded) || (a.d - b.d)); // matches get a place first, faded ones fill the rest
     const taken = vis.map(({ p }) => ({ x1: p.x - 6, y1: p.y - 6, x2: p.x + 6, y2: p.y + 6 })); // the markers themselves
     const hit = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
     let placed = 0;
-    for (const { g, p } of vis) {
-      if (placed >= 400) break;
+    for (const { g, p, faded } of vis) {
+      if (placed >= 600) break;
       const lines = labelLines(g);
       const w = Math.max(...lines.map((l) => l.text.length)) * 5.6 + 7, h = lines.length * 10 + 2;
       const options = [
@@ -549,8 +550,8 @@
         if (taken.some((t) => hit(t, box))) continue;
         taken.push(box);
         const only6 = g.rows.every((r) => r.type === 'd6') ? ' lb-d6' : '';
-        const html = `<span class="lb p-${pos}${only6}">${lines.map((l) => `<b class="t-${l.type}">${esc(l.text)}</b>`).join('')}</span>`;
-        labelLayer.addLayer(L.marker([g.lat, g.lng], { icon: L.divIcon({ className: 'lbl', html, iconSize: [0, 0] }), interactive: false, keyboard: false, zIndexOffset: 500 }));
+        const html = `<span class="lb p-${pos}${only6}${faded ? ' lb-dim' : ''}">${lines.map((l) => `<b class="t-${l.type}">${esc(l.text)}</b>`).join('')}</span>`;
+        labelLayer.addLayer(L.marker([g.lat, g.lng], { icon: L.divIcon({ className: 'lbl', html, iconSize: [0, 0] }), interactive: false, keyboard: false, zIndexOffset: faded ? 300 : 500 }));
         placed++;
         break;
       }
