@@ -192,18 +192,24 @@ window.MapStyle = (() => {
     }
   }
 
-  /* ---------- main roads coloured light yellow ----------
-     The built-in "light" style draws every road class in the same flat off-white colour.
-     This finds the "highway" (main road) rule by testing its filter (so it keeps working even
-     if the library changes rule order) and gives just that class a light yellow colour.
-     Everything else (secondary/minor roads, other streets, the railway, boundaries) is left
-     exactly as the built-in style draws it. */
+  /* ---------- main/secondary roads and the railway, subtly tinted ----------
+     The built-in "light" style draws every road class in the same flat off-white colour,
+     and the railway in light grey. This finds those rules by testing their filter (so it
+     keeps working even if the library changes rule order) and:
+     - gives "highway" (main roads) a light yellow
+     - gives "major_road" (secondary roads) an even paler, faded yellow — just enough to
+       tell it apart from minor roads and small streets, which stay the map's plain white
+     - keeps the railway faint (low opacity), so it reads as present but not eye-catching */
   const testFilter = (rule, props) => { try { return !!rule.filter(20, { props }); } catch (e) { return false; } };
   const findRoad = (paint, kind) => paint.find((r) => r.dataLayer === 'roads' && typeof r.filter === 'function' && testFilter(r, { kind }));
+  const setColor = (rule, color) => { if (rule) rule.symbolizer.color = new (rule.symbolizer.color.constructor)(color); };
 
   function osmRoadColors(paint) {
-    const highway = findRoad(paint, 'highway');
-    if (highway) highway.symbolizer.color = new (highway.symbolizer.color.constructor)('#ffe27a');
+    setColor(findRoad(paint, 'highway'), '#ffe27a');      // main roads: light yellow
+    setColor(findRoad(paint, 'major_road'), '#fcf3cf');   // secondary roads: faded, paler yellow
+
+    const rail = findRoad(paint, 'rail');
+    if (rail) { rail.symbolizer.color = new (rail.symbolizer.color.constructor)('#9aa0a6'); rail.symbolizer.opacity = new (rail.symbolizer.opacity.constructor)(0.35); }
   }
 
   /* ---------- polygon fills for land use the built-in style leaves out ---------- */
