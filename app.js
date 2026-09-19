@@ -2,7 +2,7 @@
   'use strict';
 
   /* ================= settings ================= */
-  const APP_VERSION = '1.1.1';
+  const APP_VERSION = '1.2.0';
   const TILES_URL = 'monastir.pmtiles';           // vector map of the Monastir area (see README)
   const VIEW = [[35.50, 10.65], [35.80, 11.05]];  // where the map opens
   const LIMITS = [[35.25, 10.35], [36.05, 11.35]]; // the map can't be dragged beyond this
@@ -216,13 +216,13 @@
   }
   function useSavedTiles(blob) {
     const archive = new pmtiles.PMTiles(tileSourceFromBlob(blob));
-    setStreet(
-      protomapsL.leafletLayer({
-        url: archive,
-        flavor: 'light',
-        lang: 'fr',
-      })
-    );
+    const layer = protomapsL.leafletLayer({
+      url: archive,
+      flavor: 'light',
+      lang: 'fr',
+    });
+    MapStyle.extend(layer, { lang: 'fr' });   // places with icons, names, house numbers, more land use (see mapstyle.js)
+    setStreet(layer);
     $('#banner').hidden = true;
   }
   function useOnlineTiles() {

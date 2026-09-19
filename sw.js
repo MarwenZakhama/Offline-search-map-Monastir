@@ -1,9 +1,9 @@
 /* Caches the app itself so it opens with no internet.
    The map (monastir.pmtiles) and your points are stored separately, in IndexedDB. */
-const VERSION = 'v5';
+const VERSION = 'v6';
 const CACHE = 'monastir-shell-' + VERSION;
 const SHELL = [
-  './', 'index.html', 'style.css', 'app.js', 'lib.js', 'manifest.webmanifest',
+  './', 'index.html', 'style.css', 'app.js', 'lib.js', 'mapstyle.js', 'manifest.webmanifest',
   'icon.svg', 'icon-192.png', 'icon-512.png', 'data/sample.csv',
   'vendor/leaflet.css', 'vendor/leaflet.js', 'vendor/pmtiles.js',
   'vendor/protomaps-leaflet.js', 'vendor/papaparse.min.js',

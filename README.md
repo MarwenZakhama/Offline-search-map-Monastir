@@ -10,6 +10,7 @@ Works with no internet once the map and your data have been saved on the phone.
 - **The map never moves while you type.** It only jumps to a point (and opens it) once all the digits of the chosen length are typed and they belong to one single spot. Clearing the search with ✕ keeps you exactly where you are.
 - Text search (client, address, area…) works too, with the same green highlight.
 - Points on exactly the same coordinates share one marker with a small count badge. Tap it to see every point there.
+- **The offline map shows places like OpenStreetMap:** mosques, schools, pharmacies, banks, cafés, shops, hospitals, hotels, fuel stations and more, each with a small icon (from zoom 16) and its name (from zoom 17), plus neighbourhood names, stream/canal names, house numbers, sports pitches, gardens and outlined buildings. It all comes from the saved `monastir.pmtiles`, so it works with no internet and needs no new download.
 - Layers button: switch between the offline map and satellite imagery (satellite needs internet). The map shows no credits text.
 - Tap a point for its details, directions and a Google Maps link. GPS button: shows your position with a beam and arrow for the direction you are facing (phone compass; while walking it falls back to GPS heading). On iPhone the app asks for compass permission the first time. Tap again to stop following.
 
@@ -52,5 +53,5 @@ Client Name, CTR Number, Area, Address, Transformater, Status, Notes. Any other 
 - To update the app, replace the files and change `VERSION` in `sw.js`. Phones pick up the new version the second time they open the app.
 
 ## Files
-`index.html` `style.css` `app.js` (the app) · `lib.js` (CSV/search helpers) · `sw.js` (offline app files) ·
+`index.html` `style.css` `app.js` (the app) · `mapstyle.js` (places, icons and extra map drawing) · `lib.js` (CSV/search helpers) · `sw.js` (offline app files) ·
 `manifest.webmanifest` + icons · `data/sample.csv` (try it from the Data screen) · `vendor/` (Leaflet, Protomaps Leaflet, PMTiles, PapaParse — bundled so nothing loads from the internet).
