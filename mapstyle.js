@@ -192,6 +192,55 @@ window.MapStyle = (() => {
     }
   }
 
+  /* ---------- OSM-familiar road colours, railway and city/administrative divisions ----------
+     The built-in "light" style draws every road class in the same flat colour (only the width
+     differs), and draws boundaries as a single thin grey line. This finds those built-in rules
+     by testing their filter (so it keeps working even if the library changes rule order) and:
+     - gives each road class its own OpenStreetMap-like colour, with a darker casing underneath
+       so roads read the way they do on openstreetmap.org
+     - makes the railway a solid, clearly visible dark dashed line instead of a faint hairline
+     - turns the administrative boundaries (city/town/neighbourhood divisions) into dashed
+       magenta lines, thicker for higher-level (town) boundaries, thinner for local ones */
+  const lerp = (pairs) => (z) => {
+    if (z <= pairs[0][0]) return pairs[0][1];
+    for (let i = 0; i < pairs.length - 1; i++) {
+      const [z0, v0] = pairs[i], [z1, v1] = pairs[i + 1];
+      if (z <= z1) return v0 + (v1 - v0) * (z - z0) / (z1 - z0);
+    }
+    return pairs[pairs.length - 1][1];
+  };
+  const testFilter = (rule, props) => { try { return !!rule.filter(20, { props }); } catch (e) { return false; } };
+  const findRoad = (paint, kind) => paint.find((r) => r.dataLayer === 'roads' && typeof r.filter === 'function' && testFilter(r, { kind }));
+  const findBoundary = (paint, kindDetail) => paint.find((r) => r.dataLayer === 'boundaries' && typeof r.filter === 'function' && testFilter(r, { kind_detail: kindDetail }));
+
+  function osmRoadColors(paint) {
+    const Line = protomapsL.LineSymbolizer;
+    // [built-in kind, casing colour, fill colour, width breakpoints, casing extra width]
+    const classes = [
+      ['highway', '#a8420f', '#f1a25a', [[3, 0], [6, 1.1], [12, 1.8], [15, 5], [18, 15]], 1.8],
+      ['major_road', '#b3821a', '#ffd685', [[6, 0], [12, 1.8], [15, 3.2], [18, 13]], 1.6],
+      ['minor_road', '#c7b23a', '#fff2a8', [[13, 0], [18, 8.5]], 1.4],
+      ['other', '#b9b3a8', '#ffffff', [[14, 0], [20, 7]], 1.2],
+    ];
+    for (const [kind, casingColor, fillColor, widths, extra] of classes) {
+      const rule = findRoad(paint, kind === 'other' ? 'other' : kind);
+      if (!rule) continue;
+      const idx = paint.indexOf(rule);
+      const width = lerp(widths);
+      const casing = { dataLayer: 'roads', filter: rule.filter, symbolizer: new Line({ color: casingColor, width: (z) => width(z) + extra }) };
+      paint.splice(idx, 0, casing);                 // casing drawn first (below)
+      rule.symbolizer = new Line({ color: fillColor, width: (z) => width(z) });   // fill drawn on top
+    }
+
+    const rail = paint.find((r) => r.dataLayer === 'roads' && typeof r.filter === 'function' && testFilter(r, { kind: 'rail' }));
+    if (rail) rail.symbolizer = new Line({ color: '#4a4a4a', width: (z) => Math.min(2.4, Math.max(0.9, (z - 10) * 0.4)), dash: [5, 3], opacity: 0.95 });
+
+    const country = findBoundary(paint, 1);
+    if (country) country.symbolizer = new Line({ color: '#b3389c', width: 1.4, dash: [7, 3] });
+    const local = findBoundary(paint, 8);
+    if (local) local.symbolizer = new Line({ color: '#c98fc0', width: 0.8, dash: [4, 2.5] });
+  }
+
   /* ---------- polygon fills for land use the built-in style leaves out ---------- */
   const fill = (kinds, color, extra) => ({
     dataLayer: 'landuse',
@@ -217,6 +266,9 @@ window.MapStyle = (() => {
       fill(['platform'], '#bbbbcc'),
       fill(['railway'], '#e6dde3'),
     );
+
+    // roads, railway and administrative divisions: openstreetmap.org-like colours (see osmRoadColors above)
+    osmRoadColors(paint);
 
     // buildings: clearer, with an outline (the default is very pale)
     const b = paint.find((r) => r.dataLayer === 'buildings');
