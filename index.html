@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14212b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Monastir Map">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Monastir Map</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="stage">
+    <div class="mapwrap">
+      <div id="map" aria-label="Map of Monastir governorate"></div>
+
+      <div class="overlay">
+      <div class="topbar">
+        <button id="btnData" class="iconbtn" type="button" aria-label="Data and offline map">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3Zm8 6v3c0 1.7-3.6 3-8 3s-8-1.3-8-3V9c1.7 1.4 4.6 2 8 2s6.3-.6 8-2Zm0 6v3c0 1.7-3.6 3-8 3s-8-1.3-8-3v-3c1.7 1.4 4.6 2 8 2s6.3-.6 8-2Z"/></svg>
+          <span id="netDot" class="netdot" hidden></span>
+        </button>
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+          <input id="q" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search reference, client, address" aria-label="Search">
+          <button id="qClear" type="button" aria-label="Clear search" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></svg>
+          </button>
+        </label>
+        <button id="btnFilter" class="iconbtn" type="button" aria-label="Filters" aria-expanded="false" aria-controls="filters">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v2l-7 7v6l-4-2v-4L3 7V5Z"/></svg>
+          <span id="filterBadge" class="badge" hidden>0</span>
+        </button>
+      </div>
+
+      <div id="chips" class="chips" role="group" aria-label="Reference type">
+        <button type="button" class="chip" data-type="d8" aria-pressed="true"><i class="dot"></i>8 digits <b>0</b></button>
+        <button type="button" class="chip" data-type="d6" aria-pressed="true"><i class="dot"></i>6 digits <b>0</b></button>
+        <button type="button" class="chip" data-type="d3" aria-pressed="true"><i class="dot"></i>3 digits <b>0</b></button>
+        <button type="button" class="chip" data-type="other" aria-pressed="true" hidden><i class="dot"></i>Other <b>0</b></button>
+      </div>
+
+      <section id="filters" class="panel" hidden>
+        <label>Area
+          <select id="fArea"><option value="">All areas</option></select>
+        </label>
+        <label id="statusField">Status
+          <select id="fStatus"><option value="">Any status</option></select>
+        </label>
+        <button id="fReset" type="button" class="textbtn">Reset filters</button>
+      </section>
+
+      <div id="banner" class="banner" hidden>
+        <span>Map isn't saved for offline use yet.</span>
+        <button id="bannerBtn" type="button">Save map</button>
+      </div>
+      </div>
+
+      <div class="fabs">
+        <button id="btnFit" class="fab small" type="button" aria-label="Zoom to shown points">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4Zm10 0h6v6h-2V6h-4V4ZM4 14h2v4h4v2H4v-6Zm14 0h2v6h-6v-2h4v-4Z"/></svg>
+        </button>
+        <button id="btnLocate" class="fab" type="button" aria-label="Show my position" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2v2.1A8 8 0 0 0 4.1 11H2v2h2.1A8 8 0 0 0 11 19.9V22h2v-2.1a8 8 0 0 0 6.9-6.9H22v-2h-2.1A8 8 0 0 0 13 4.1V2h-2Zm1 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm0 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <section id="sheet" class="sheet" aria-label="Results">
+      <button id="sheetHandle" class="sheethead" type="button" aria-expanded="false" aria-controls="list">
+        <span class="grip" aria-hidden="true"></span>
+        <span id="count" class="count">No data yet</span>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 6-6 6 6-1.4 1.4L12 10.8l-4.6 4.6L6 14Z"/></svg>
+      </button>
+      <div id="list" class="list" role="list"></div>
+    </section>
+  </main>
+
+  <div id="dataView" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="dataTitle">
+    <div class="modalbody">
+      <header>
+        <h2 id="dataTitle">Data and offline map</h2>
+        <button id="dataClose" class="iconbtn plain" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></svg>
+        </button>
+      </header>
+
+      <section>
+        <h3>Add points</h3>
+        <label class="field">Google Sheet link
+          <input id="urlInput" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </label>
+        <label class="field">Name (optional)
+          <input id="nameInput" type="text" placeholder="e.g. 8-digit references" autocomplete="off">
+        </label>
+        <div class="row2">
+          <button id="urlLoad" type="button" class="primary">Load link</button>
+          <label class="filebtn">Choose CSV file
+            <input id="fileInput" type="file" accept=".csv,text/csv,text/plain">
+          </label>
+        </div>
+        <p class="hint">The sheet must be shared as “Anyone with the link”, or published with File ▸ Share ▸ Publish to web ▸ CSV. It needs the columns <b>Reference</b>, <b>Latitude</b> and <b>Longitude</b>.</p>
+        <button id="sampleBtn" type="button" class="textbtn">Try sample data</button>
+        <p id="importMsg" class="msg" hidden></p>
+      </section>
+
+      <section>
+        <h3>Your data <span class="sub">saved on this phone</span></h3>
+        <div id="dsList" class="dslist"></div>
+      </section>
+
+      <section>
+        <h3>Offline map</h3>
+        <p id="tilesStatus" class="hint"></p>
+        <div id="tilesProgress" class="progress" hidden><i></i></div>
+        <button id="tilesBtn" type="button" class="primary">Save map for offline use</button>
+        <p id="tilesMsg" class="msg" hidden></p>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="vendor/leaflet.js"></script>
+  <script src="vendor/pmtiles.js"></script>
+  <script src="vendor/protomaps-leaflet.js"></script>
+  <script src="vendor/papaparse.min.js"></script>
+  <script src="lib.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

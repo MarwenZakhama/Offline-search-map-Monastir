@@ -1,0 +1,13 @@
+,Reference,CTR Number,Client Name,Latitude,Longitude,Google Maps,Area,Address,Transformater,Status,Notes
+,65801357,,,35.65098268,10.88760482,Open Map,Ksar Hellal,Garage av nations unis,,To visit,
+,65801355,,,35.6507958,10.88765121,Open Map,Ksar Hellal,,,To visit,
+,65801503,,,35.65129833,10.88915856,Open Map,Soua,Avenue des Etats Unis,,Done,
+,65801525,,,35.65137866,10.88928731,Open Map,Soua,Avenue des Etats Unis,,Done,
+,65801555,,,35.6520213,10.88931416,Open Map,Ksar Hellal,Avenue Hadj Ali Soua,,To visit,
+,65805030,,,35.65454386,10.88869732,Open Map,Ksar Hellal,,,To visit,
+,65805070,,,35.654014,10.889699,Open Map,Ksar Hellal,R hassen b brim,,Done,
+,65805357,,,35.65595774,10.89060865,Open Map,Ksar Hellal,Avenue Hadj Ali Soua,,To visit,
+,65805567,,,35.655034,10.890293,Open Map,Ksar Hellal,Avenue Hadj Ali Soua,,To visit,
+,458213,,Sample 6-digit row,35.7712,10.8264,Open Map,Monastir,Sample row: near the marina,,To visit,Made up to demo the 6-digit type
+,458219,,Sample 6-digit row,35.7689,10.8331,Open Map,Monastir,Sample row: near the ribat,,Done,Made up to demo the 6-digit type
+,217,,Sample 3-digit row,35.7602,10.8092,Open Map,Monastir,Sample row: city centre,,To visit,Made up to demo the 3-digit type
