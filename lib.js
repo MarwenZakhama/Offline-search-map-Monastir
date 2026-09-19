@@ -23,6 +23,22 @@
     return 'other';
   }
 
+  // 65123456 -> "65 123 456", 123456 -> "123 456"; other references are shown as they are.
+  function formatRef(ref, type) {
+    const s = String(ref);
+    if (type === 'd8') return s.slice(0, 2) + ' ' + s.slice(2, 5) + ' ' + s.slice(5);
+    if (type === 'd6') return s.slice(0, 3) + ' ' + s.slice(3);
+    return s;
+  }
+  // Short text drawn next to a point on the map: the first 2 digits of an 8-digit reference are left out.
+  function mapLabel(ref, type) {
+    const s = String(ref);
+    if (type === 'd8') return s.slice(2, 5) + ' ' + s.slice(5);
+    return formatRef(s, type);
+  }
+  // Points with identical coordinates (to ~10 cm) share one spot on the map.
+  const groupKey = (r) => r.lat.toFixed(6) + ',' + r.lng.toFixed(6);
+
   /* ---------- columns ---------- */
   const ALIASES = {
     ref: ['reference', 'ref', 'refnumber', 'refno', 'referencenumber', 'referenceno', 'numref', 'numeroreference'],
@@ -127,15 +143,31 @@
   function haystack(r) {
     return norm([r.ref, r.name, r.ctr, r.area, r.address, r.transformer, r.status, r.notes].join(' '));
   }
+  const digitsOnly = (q) => (/^[\d\s]+$/.test(String(q).trim()) ? String(q).replace(/\s+/g, '') : '');
   function matchQuery(hay, q) {
+    const d = digitsOnly(q);
+    if (d) return hay.includes(d);
     const tokens = norm(q).split(/\s+/).filter(Boolean);
     return tokens.every((t) => hay.includes(t));
   }
-  // Put references that start with the query first, then the rest by reference.
+  // Order: exact reference, then the 6 digits shown on the map for an 8-digit reference, then starts-with, then the rest.
   function rank(rows, q) {
-    const first = norm(q).split(/\s+/).filter(Boolean)[0] || '';
-    const score = (r) => (first && r.ref.toLowerCase() === first ? 0 : first && r.ref.toLowerCase().startsWith(first) ? 1 : 2);
+    const first = digitsOnly(q) || norm(q).split(/\s+/).filter(Boolean)[0] || '';
+    const score = (r) => {
+      const ref = r.ref.toLowerCase();
+      if (!first) return 9;
+      if (ref === first) return 0;
+      if (r.type === 'd8' && ref.slice(2) === first) return 1;
+      if (ref.startsWith(first)) return 2;
+      return 3;
+    };
     return rows.slice().sort((a, b) => score(a) - score(b) || a.ref.localeCompare(b.ref, undefined, { numeric: true }));
+  }
+  // Rows whose whole reference was typed: 65123456 (exact), or the 6 digits you see on the map for an 8-digit reference.
+  function refHits(rows, q) {
+    const c = digitsOnly(q);
+    if (!/^\d{3,8}$/.test(c)) return [];
+    return rows.filter((r) => r.ref === c || (r.type === 'd8' && r.ref.slice(2) === c));
   }
 
   /* ---------- Google Sheets links ---------- */
@@ -179,7 +211,7 @@
   }
 
   return {
-    detectType, parseNumber, parseMatrix, haystack, matchQuery, rank,
+    detectType, formatRef, mapLabel, groupKey, parseNumber, parseMatrix, haystack, matchQuery, rank, refHits,
     sheetCsvUrls, haversine, formatDistance, mapsUrl, directionsUrl,
     decodeCsv, escapeHtml, norm,
   };

@@ -1,12 +1,14 @@
-# Monastir Map
+# Moknine Map
 
-A phone app (installable web app) that shows your Google Sheet / CSV points on a map of Monastir.
+A phone app (installable web app) that shows your Google Sheet / CSV points on an offline map.
 Works with no internet once the map and your data have been saved on the phone.
 
-- Points are coloured by reference type: **8 digits** (orange), **6 digits** (teal), **3 digits** (violet).
-- Search by reference, client, address, area… Filter by type, area and status.
-- Tap a point for its details, directions and a Google Maps link.
-- GPS button: shows your position, tap again to stop following.
+- Each reference type has its own marker: **8 digits** orange circle, **6 digits** yellow upside-down triangle, **3 digits** blue diamond.
+- References are shown as `65 123 456` (8 digits) and `123 456` (6 digits). On the map, labels appear from zoom 16 and leave out the first 2 digits of an 8-digit reference (`123 456`); 6-digit labels are red so they can't be mistaken for those.
+- Search by reference, client, address, area… Type a whole reference (`65 123 456`, or just the 6 digits you see on the map) and its point opens by itself. Filter by type, area and status.
+- Points on exactly the same coordinates share one marker with a count badge. Tap it to see every point there.
+- Layers button: switch between the offline map and satellite imagery (satellite needs internet).
+- Tap a point for its details, directions and a Google Maps link. GPS button: shows your position, tap again to stop following.
 
 ## Set it up (about 15 minutes, once)
 
@@ -42,8 +44,9 @@ Client Name, CTR Number, Area, Address, Transformater, Status, Notes. Any other 
 
 ## Good to know
 - iPhone/Safari can delete saved data from sites you haven't opened for a week. Installing to the Home Screen avoids this.
+- Satellite imagery comes from Esri's public World Imagery service and is not saved for offline use. Use it for light, occasional viewing.
 - The online fallback map (used only until you save the map) is the public OpenStreetMap server: fine for light use.
-- To update the app, replace the files and change `VERSION` in `sw.js`.
+- To update the app, replace the files and change `VERSION` in `sw.js`. Phones pick up the new version the second time they open the app.
 
 ## Files
 `index.html` `style.css` `app.js` (the app) · `lib.js` (CSV/search helpers) · `sw.js` (offline app files) ·

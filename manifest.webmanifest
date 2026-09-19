@@ -1,7 +1,7 @@
 {
-  "name": "Monastir Map",
-  "short_name": "Monastir",
-  "description": "Your reference points on an offline map of Monastir.",
+  "name": "Moknine Map",
+  "short_name": "Moknine",
+  "description": "Your reference points on an offline map of Moknine.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
